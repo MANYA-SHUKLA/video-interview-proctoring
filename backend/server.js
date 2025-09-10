@@ -1,4 +1,3 @@
-// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -6,14 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-
-// Ensure directories exist
 const reportsDir = path.join(__dirname, 'reports');
 const videosDir = path.join(__dirname, 'videos');
 if (!fs.existsSync(reportsDir)) {
@@ -22,11 +17,7 @@ if (!fs.existsSync(reportsDir)) {
 if (!fs.existsSync(videosDir)) {
     fs.mkdirSync(videosDir, { recursive: true });
 }
-
-// Store reports in memory (in production, use a database)
 let reports = [];
-
-// Load existing reports from files on server start
 try {
     const files = fs.readdirSync(reportsDir);
     files.forEach(file => {
@@ -41,10 +32,6 @@ try {
 } catch (error) {
     console.log('No existing reports found or error loading them');
 }
-
-// API Routes
-
-// Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
@@ -52,8 +39,6 @@ app.get('/api/health', (req, res) => {
         reportsCount: reports.length
     });
 });
-
-// Get all reports
 app.get('/api/reports', (req, res) => {
     try {
         // Sort by timestamp descending (newest first)
@@ -66,8 +51,6 @@ app.get('/api/reports', (req, res) => {
         res.status(500).json({ error: 'Failed to fetch reports' });
     }
 });
-
-// Get a specific report by ID
 app.get('/api/reports/:id', (req, res) => {
     try {
         const report = reports.find(r => r.id === req.params.id);
@@ -80,8 +63,6 @@ app.get('/api/reports/:id', (req, res) => {
         res.status(500).json({ error: 'Failed to fetch report' });
     }
 });
-
-// Save a new report
 app.post('/api/reports', (req, res) => {
     try {
         const {
@@ -118,7 +99,7 @@ app.post('/api/reports', (req, res) => {
 
         reports.push(report);
         
-        // Save to file
+        
         saveReportToFile(report);
         
         res.status(201).json({ 
@@ -134,8 +115,6 @@ app.post('/api/reports', (req, res) => {
         });
     }
 });
-
-// Save video recording
 app.post('/api/videos', (req, res) => {
     try {
         const { videoData, reportId } = req.body;
@@ -143,13 +122,12 @@ app.post('/api/videos', (req, res) => {
         if (!videoData) {
             return res.status(400).json({ error: 'No video data provided' });
         }
-        
-        // Convert base64 to buffer
+    
         const videoBuffer = Buffer.from(videoData, 'base64');
         const filename = `video-${reportId || generateId()}.webm`;
         const filepath = path.join(videosDir, filename);
         
-        // Save video file
+        
         fs.writeFileSync(filepath, videoBuffer);
         
         res.json({ 
@@ -165,8 +143,6 @@ app.post('/api/videos', (req, res) => {
         });
     }
 });
-
-// Get video by filename
 app.get('/api/videos/:filename', (req, res) => {
     try {
         const filename = req.params.filename;
@@ -176,11 +152,10 @@ app.get('/api/videos/:filename', (req, res) => {
             return res.status(404).json({ error: 'Video not found' });
         }
         
-        // Set appropriate headers
         res.setHeader('Content-Type', 'video/webm');
         res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         
-        // Stream the video file
+        
         const videoStream = fs.createReadStream(filepath);
         videoStream.pipe(res);
     } catch (error) {
@@ -189,7 +164,7 @@ app.get('/api/videos/:filename', (req, res) => {
     }
 });
 
-// Download report as file
+
 app.get('/api/reports/:id/download', (req, res) => {
     try {
         const report = reports.find(r => r.id === req.params.id);
@@ -209,7 +184,6 @@ app.get('/api/reports/:id/download', (req, res) => {
     }
 });
 
-// Delete a report
 app.delete('/api/reports/:id', (req, res) => {
     try {
         const reportIndex = reports.findIndex(r => r.id === req.params.id);
@@ -217,10 +191,10 @@ app.delete('/api/reports/:id', (req, res) => {
             return res.status(404).json({ error: 'Report not found' });
         }
         
-        // Remove from memory
+        
         reports.splice(reportIndex, 1);
         
-        // Remove from file system
+        
         const filename = `report-${req.params.id}.json`;
         const filepath = path.join(reportsDir, filename);
         
@@ -238,14 +212,10 @@ app.delete('/api/reports/:id', (req, res) => {
     }
 });
 
-// Helper functions
-
-// Generate a unique ID
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Save report to file
 function saveReportToFile(report) {
     try {
         const filename = `report-${report.id}.json`;
@@ -255,8 +225,6 @@ function saveReportToFile(report) {
         console.error('Error saving report to file:', error);
     }
 }
-
-// Generate report content for download
 function generateReportContent(report) {
     return `
 === INTERVIEWGUARD PRO - PROCTORING REPORT ===
@@ -292,23 +260,17 @@ ${(report.events || []).map(event => `[${event.timestamp}] ${event.message}`).jo
 InterviewGuard Pro - AI-Powered Proctoring System
     `;
 }
-
-// Helper function to get score description
 function getScoreDescription(score) {
     if (score >= 90) return "EXCELLENT - No significant issues detected";
     if (score >= 70) return "GOOD - Minor focus issues observed";
     if (score >= 50) return "FAIR - Several focus and integrity concerns";
     return "POOR - Significant integrity issues detected";
 }
-
-// Helper function to get recommendation
 function getRecommendation(score) {
     if (score >= 80) return "RECOMMENDED - Candidate maintained good focus and integrity throughout the interview.";
     if (score >= 60) return "CONDITIONALLY RECOMMENDED - Some focus issues were observed but may not disqualify the candidate.";
     return "NOT RECOMMENDED - Significant integrity issues suggest the interview may not reflect the candidate's authentic abilities.";
 }
-
-// Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Unhandled error:', error);
     res.status(500).json({ 
@@ -316,16 +278,12 @@ app.use((error, req, res, next) => {
         error: 'Internal server error' 
     });
 });
-
-// 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({ 
         success: false,
         error: 'Endpoint not found' 
     });
 });
-
-// Start server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`API health check: http://localhost:${PORT}/api/health`);
