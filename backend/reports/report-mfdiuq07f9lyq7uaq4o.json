@@ -1,0 +1,96 @@
+{
+  "id": "mfdiuq07f9lyq7uaq4o",
+  "timestamp": "2025-09-10T05:11:11.911Z",
+  "candidateName": "Test Candidate",
+  "interviewDuration": "00:00:00",
+  "startTime": "2025-09-10T05:11:08.361Z",
+  "endTime": "2025-09-10T05:11:11.895Z",
+  "focusIssues": {
+    "lookAwayCount": 0,
+    "noFaceCount": 0,
+    "multipleFacesCount": 0
+  },
+  "prohibitedItems": {
+    "phonesDetected": 0,
+    "booksDetected": 0,
+    "devicesDetected": 0
+  },
+  "integrityScore": 100,
+  "events": [
+    {
+      "timestamp": "10:41:02",
+      "message": "Loading face detection model...",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:06",
+      "message": "Face detection model loaded.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:06",
+      "message": "Loading object detection model...",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:06",
+      "message": "Starting interview process...",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Object detection model loaded.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "All AI models loaded successfully. System is ready.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Application initialized. Click \"Start Interview\" to begin.",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Video recording started.",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Interview started. Camera access granted.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Face detection initialized. Starting monitoring...",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:08",
+      "message": "Object detection initialized. Monitoring for prohibited items...",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:10",
+      "message": "Interview stopped. Ready to generate report.",
+      "type": "info"
+    },
+    {
+      "timestamp": "10:41:10",
+      "message": "Video recording completed and stored.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:10",
+      "message": "Video recording downloaded.",
+      "type": "success"
+    },
+    {
+      "timestamp": "10:41:11",
+      "message": "Generating and saving proctoring report...",
+      "type": "info"
+    }
+  ]
+}

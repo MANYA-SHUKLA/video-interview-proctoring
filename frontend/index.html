@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewGuard Pro | AI-Powered Proctoring</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Load TensorFlow.js and MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body>
+    <div class="background-animation"></div>
+
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+                        alt="InterviewGuard Logo" class="logo-img">
+                    <div>
+                        <h1>InterviewGuard <span>Pro</span></h1>
+                        <p>AI-Powered Video Interview Proctoring</p>
+                    </div>
+                </div>
+                <div class="header-buttons">
+                    <button class="btn-help">
+                        <i class="fas fa-question-circle"></i> Help
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="main-content">
+                <div class="video-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-video"></i> Live Camera Monitoring</h2>
+                        <div class="video-quality">
+                            <span class="quality-dot"></span>
+                            <span>HD Quality</span>
+                        </div>
+                    </div>
+
+                    <div class="video-container">
+                        <div class="video-wrapper">
+                            <video id="webcam" autoplay playsinline></video>
+                            <canvas id="output-canvas"></canvas>
+                            <div class="focus-indicator" id="focus-indicator">
+                                <i class="fas fa-user-check"></i>
+                                <span>Candidate Focused</span>
+                            </div>
+                            <div class="recording-indicator">
+                                <div class="pulsing-red-dot"></div>
+                                <span>Recording</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="start-btn" class="btn btn-primary">
+                            <i class="fas fa-play-circle"></i> Start Interview
+                        </button>
+                        <button id="stop-btn" class="btn btn-secondary" disabled>
+                            <i class="fas fa-stop-circle"></i> Stop Interview
+                        </button>
+                        <button id="download-btn" class="btn btn-success" disabled>
+                            <i class="fas fa-file-download"></i> Download Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="status-section">
+                    <div class="stats-grid">
+                        <div class="stat-card focus-card">
+                            <div class="card-icon">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Focus Detection</h3>
+                                <div id="focus-status" class="status-indicator">Not Started</div>
+                                <div class="stat-details">
+                                    <div class="stat-item">
+                                        <i class="fas fa-eye-slash"></i>
+                                        <div>
+                                            <span class="stat-value" id="look-away-count">0</span>
+                                            <span class="stat-label">Looking Away</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-user-times"></i>
+                                        <div>
+                                            <span class="stat-value" id="no-face-count">0</span>
+                                            <span class="stat-label">No Face Detected</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-users"></i>
+                                        <div>
+                                            <span class="stat-value" id="multiple-faces-count">0</span>
+                                            <span class="stat-label">Multiple Faces</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card object-card">
+                            <div class="card-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Object Detection</h3>
+                                <div id="object-status" class="status-indicator">Not Started</div>
+                                <div class="stat-details">
+                                    <div class="stat-item">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        <div>
+                                            <span class="stat-value" id="phone-count">0</span>
+                                            <span class="stat-label">Phones Detected</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-book"></i>
+                                        <div>
+                                            <span class="stat-value" id="book-count">0</span>
+                                            <span class="stat-label">Books Detected</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-laptop"></i>
+                                        <div>
+                                            <span class="stat-value" id="device-count">0</span>
+                                            <span class="stat-label">Other Devices</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card recording-card">
+                            <div class="card-icon">
+                                <i class="fas fa-record-vinyl"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Recording Status</h3>
+                                <div id="recording-status" class="status-indicator">Not Started</div>
+                                <div class="stat-details">
+                                    <div class="stat-item">
+                                        <i class="fas fa-circle"></i>
+                                        <div>
+                                            <span class="stat-value" id="recording-state">Inactive</span>
+                                            <span class="stat-label">Current Status</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="fas fa-clock"></i>
+                                        <div>
+                                            <span class="stat-value" id="recording-duration">00:00:00</span>
+                                            <span class="stat-label">Duration</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card score-card">
+                            <div class="card-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Interview Analytics</h3>
+                                <div class="score-display">
+                                    <div class="score-circle">
+                                        <svg width="120" height="120">
+                                            <circle class="score-bg" cx="60" cy="60" r="54"></circle>
+                                            <circle class="score-progress" cx="60" cy="60" r="54"
+                                                stroke-dasharray="339.3" stroke-dashoffset="0"></circle>
+                                            <text x="60" y="65" text-anchor="middle" class="score-text">100</text>
+                                        </svg>
+                                    </div>
+                                    <div class="score-details">
+                                        <div class="interview-time">
+                                            <i class="fas fa-stopwatch"></i>
+                                            <span id="duration">00:00:00</span>
+                                        </div>
+                                        <div class="score-value">
+                                            Integrity Score: <strong id="score">100</strong>/100
+                                        </div>
+                                        <div class="score-label">Excellent</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="events-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-list-alt"></i> Real-time Event Log</h2>
+                    <span class="log-count" id="log-count">1 event</span>
+                </div>
+                <div id="event-log" class="log-container">
+                    <div class="log-entry info">
+                        <div class="log-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="log-content">
+                            <div class="log-message">System initialized. Click "Start Interview" to begin monitoring.
+                            </div>
+                            <div class="log-time">14:25:36</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-toast" id="notification-toast">
+        <div class="toast-content">
+            <i class="fas fa-bell"></i>
+            <span id="toast-message">Notification will appear here</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

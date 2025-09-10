@@ -1,0 +1,96 @@
+{
+  "id": "mfcw6j0fgsfqk8t6ck5",
+  "timestamp": "2025-09-09T18:36:31.551Z",
+  "candidateName": "Test Candidate",
+  "interviewDuration": "00:00:15",
+  "startTime": "2025-09-09T18:36:07.732Z",
+  "endTime": "2025-09-09T18:36:31.458Z",
+  "focusIssues": {
+    "lookAwayCount": 0,
+    "noFaceCount": 0,
+    "multipleFacesCount": 0
+  },
+  "prohibitedItems": {
+    "phonesDetected": 1,
+    "booksDetected": 0,
+    "devicesDetected": 0
+  },
+  "integrityScore": 90,
+  "events": [
+    {
+      "timestamp": "00:06:02",
+      "message": "Loading face detection model...",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:04",
+      "message": "Face detection model loaded.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:04",
+      "message": "Loading object detection model...",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:05",
+      "message": "Starting interview process...",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:05",
+      "message": "Object detection model loaded.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:05",
+      "message": "All models loaded successfully.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:05",
+      "message": "Application initialized. Click \"Start Interview\" to begin.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:07",
+      "message": "Interview started. Camera access granted.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:07",
+      "message": "Face detection initialized. Starting monitoring...",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:07",
+      "message": "Object detection initialized. Monitoring for prohibited items...",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:14",
+      "message": "Face detected again.",
+      "type": "success"
+    },
+    {
+      "timestamp": "00:06:16",
+      "message": "Face detected again.",
+      "type": "success"
+    },
+    {
+      "timestamp": "00:06:19",
+      "message": "Mobile phone detected! (69% confidence)",
+      "type": "error"
+    },
+    {
+      "timestamp": "00:06:22",
+      "message": "Interview stopped. Ready to generate report.",
+      "type": "info"
+    },
+    {
+      "timestamp": "00:06:31",
+      "message": "Generating and saving proctoring report...",
+      "type": "info"
+    }
+  ]
+}

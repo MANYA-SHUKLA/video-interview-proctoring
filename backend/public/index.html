@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proctoring Reports</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-top: 20px;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #3498db; 
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) { 
+            background-color: #f9f9f9; 
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .btn {
+            padding: 8px 15px;
+            background-color: #2ecc71;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #27ae60;
+        }
+        .loading, .error {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .refresh-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .refresh-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Interview Proctoring Reports</h1>
+        <button class="refresh-btn" onclick="loadReports()">Refresh Reports</button>
+        <div id="reports-container">
+            <p class="loading">Loading reports...</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadReports() {
+            const container = document.getElementById('reports-container');
+            container.innerHTML = '<p class="loading">Loading reports...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/reports');
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                
+                const reports = await response.json();
+                
+                if (reports.length === 0) {
+                    container.innerHTML = '<p class="loading">No reports available. Run some interviews first.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Report ID</th>
+                                <th>Candidate Name</th>
+                                <th>Interview Duration</th>
+                                <th>Integrity Score</th>
+                                <th>Date Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                reports.forEach(report => {
+                    const date = new Date(report.timestamp).toLocaleString();
+                    html += `
+                        <tr>
+                            <td>${report.id}</td>
+                            <td>${report.candidateName || 'Test Candidate'}</td>
+                            <td>${report.interviewDuration || 'N/A'}</td>
+                            <td>${report.integrityScore || '100'}/100</td>
+                            <td>${date}</td>
+                            <td>
+                                <a href="/api/reports/${report.id}/download" class="btn" target="_blank">Download Report</a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                container.innerHTML = `
+                    <p class="error">Error loading reports: ${error.message}</p>
+                    <p class="error">Make sure the backend server is running on http://localhost:3000</p>
+                `;
+            }
+        }
+        
+        // Load reports when page loads
+        window.onload = loadReports;
+    </script>
+</body>
+</html>
