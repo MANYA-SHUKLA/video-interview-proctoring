@@ -811,57 +811,154 @@ async function downloadReport() {
     }
 }
 
-// Generate PDF report - FIXED VERSION
+// Generate PDF report - UPDATED VERSION
 async function generatePDFReport(reportData) {
     try {
         showNotification('Creating PDF report...', 'info');
         
-        // Create a temporary div to render the report
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.width = '1000px';
-        tempDiv.style.padding = '20px';
-        tempDiv.style.backgroundColor = 'white';
-        
-        // Get the PDF template HTML
-        const templateHTML = await fetchPDFTemplate();
-        tempDiv.innerHTML = templateHTML;
-        
-        document.body.appendChild(tempDiv);
-        
-        // Populate the report with data
-        populateReport(tempDiv, reportData);
-        
-        // Wait for content to render
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Use html2canvas with better configuration for capturing styles
-        const canvas = await html2canvas(tempDiv, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            allowTaint: true
-        });
-        
-        const imgData = canvas.toDataURL('image/png', 1.0);
+        // Create a new jsPDF instance
         const pdf = new jspdf.jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4'
         });
         
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        // Set initial y position
+        let y = 20;
         
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        // Add header
+        pdf.setFontSize(22);
+        pdf.setTextColor(67, 97, 238); // Blue color
+        pdf.text('InterviewGuard Pro Report', 105, y, { align: 'center' });
+        
+        pdf.setFontSize(14);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('AI-Powered Proctoring Analysis', 105, y + 8, { align: 'center' });
+        
+        y += 25;
+        
+        // Add candidate information section
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Candidate Information', 20, y);
+        
+        y += 10;
+        
+        pdf.setFontSize(12);
+        pdf.text(`Name: ${reportData.candidateName}`, 20, y);
+        pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, y + 7);
+        pdf.text(`Start Time: ${new Date(reportData.startTime).toLocaleTimeString()}`, 20, y + 14);
+        pdf.text(`End Time: ${new Date(reportData.endTime).toLocaleTimeString()}`, 20, y + 21);
+        pdf.text(`Duration: ${reportData.interviewDuration}`, 20, y + 28);
+        
+        y += 40;
+        
+        // Add integrity score
+        pdf.setFontSize(16);
+        pdf.text('Integrity Score', 20, y);
+        
+        pdf.setFontSize(36);
+        pdf.setTextColor(67, 97, 238);
+        pdf.text(`${reportData.integrityScore}/100`, 105, y + 10, { align: 'center' });
+        
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(getScoreDescription(reportData.integrityScore), 105, y + 18, { align: 'center' });
+        
+        y += 30;
+        
+        // Add focus analysis section
+        pdf.setFontSize(16);
+        pdf.text('Focus Analysis', 20, y);
+        
+        y += 10;
+        
+        pdf.setFontSize(12);
+        pdf.text(`Times Looked Away: ${reportData.focusIssues.lookAwayCount}`, 20, y);
+        pdf.text(`No Face Detected: ${reportData.focusIssues.noFaceCount}`, 20, y + 7);
+        pdf.text(`Multiple Faces: ${reportData.focusIssues.multipleFacesCount}`, 20, y + 14);
+        
+        y += 25;
+        
+        // Add object detection section
+        pdf.setFontSize(16);
+        pdf.text('Object Detection', 20, y);
+        
+        y += 10;
+        
+        pdf.setFontSize(12);
+        pdf.text(`Mobile Phones: ${reportData.prohibitedItems.phonesDetected}`, 20, y);
+        pdf.text(`Books/Notes: ${reportData.prohibitedItems.booksDetected}`, 20, y + 7);
+        pdf.text(`Other Devices: ${reportData.prohibitedItems.devicesDetected}`, 20, y + 14);
+        
+        y += 25;
+        
+        // Add event log section if there are events
+        if (reportData.events.length > 0) {
+            pdf.setFontSize(16);
+            pdf.text('Event Log', 20, y);
+            
+            y += 10;
+            
+            pdf.setFontSize(10);
+            
+            // Add events (with pagination if needed)
+            let eventsAdded = 0;
+            for (const event of reportData.events) {
+                if (y > 250) { // Check if we need a new page
+                    pdf.addPage();
+                    y = 20;
+                }
+                
+                pdf.setTextColor(0, 0, 0);
+                pdf.text(`[${event.timestamp}]`, 20, y);
+                
+                // Set color based on event type
+                if (event.type === 'error') pdf.setTextColor(231, 76, 60);
+                else if (event.type === 'warning') pdf.setTextColor(243, 156, 18);
+                else if (event.type === 'success') pdf.setTextColor(46, 204, 113);
+                else pdf.setTextColor(52, 152, 219);
+                
+                pdf.text(event.message, 40, y);
+                
+                y += 6;
+                eventsAdded++;
+                
+                // Limit to 50 events to prevent PDF from getting too large
+                if (eventsAdded >= 50) break;
+            }
+            
+            if (reportData.events.length > 50) {
+                y += 5;
+                pdf.setTextColor(100, 100, 100);
+                pdf.text(`... and ${reportData.events.length - 50} more events`, 20, y);
+            }
+        }
+        
+        y += 15;
+        
+        // Add final recommendation
+        pdf.setFontSize(14);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Recommendation:', 20, y);
+        
+        y += 8;
+        
+        pdf.setFontSize(12);
+        pdf.text(getRecommendation(reportData.integrityScore), 20, y);
+        
+        // Add footer with generation time
+        const pageCount = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(10);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Report generated: ${new Date().toLocaleString()}`, 105, 287, { align: 'center' });
+            pdf.text(`Page ${i} of ${pageCount}`, 105, 292, { align: 'center' });
+        }
         
         // Save the PDF
         pdf.save(`proctoring-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-        
-        // Clean up
-        document.body.removeChild(tempDiv);
         
         logEvent('PDF report downloaded successfully.', 'success');
         showNotification('PDF report downloaded successfully!', 'success');
@@ -872,132 +969,6 @@ async function generatePDFReport(reportData) {
         
         // Fallback to text report
         downloadLocalReport(reportData);
-    }
-}
-
-// Populate report with data
-function populateReport(container, data) {
-    const populateElement = (id, value) => {
-        const element = container.querySelector(`#${id}`);
-        if (element) element.textContent = value;
-    };
-    
-    populateElement('candidate-name', data.candidateName);
-    populateElement('interview-date', new Date().toLocaleDateString());
-    populateElement('start-time', new Date(data.startTime).toLocaleTimeString());
-    populateElement('end-time', new Date(data.endTime).toLocaleTimeString());
-    populateElement('duration', data.interviewDuration);
-    populateElement('report-time', new Date().toLocaleString());
-    
-    populateElement('integrity-score', data.integrityScore);
-    populateElement('integrity-score-text', data.integrityScore);
-    populateElement('score-description', getScoreDescription(data.integrityScore));
-    
-    const focusIssuesTotal = data.focusIssues.lookAwayCount + data.focusIssues.noFaceCount + data.focusIssues.multipleFacesCount;
-    const objectsDetectedTotal = data.prohibitedItems.phonesDetected + data.prohibitedItems.booksDetected + data.prohibitedItems.devicesDetected;
-    
-    populateElement('focus-issues', focusIssuesTotal);
-    populateElement('objects-detected', objectsDetectedTotal);
-    populateElement('final-score', data.integrityScore);
-    
-    populateElement('look-away-count', data.focusIssues.lookAwayCount);
-    populateElement('no-face-count', data.focusIssues.noFaceCount);
-    populateElement('multiple-faces-count', data.focusIssues.multipleFacesCount);
-    populateElement('focus-score', calculateFocusScore(data.focusIssues));
-    
-    populateElement('phone-count', data.prohibitedItems.phonesDetected);
-    populateElement('book-count', data.prohibitedItems.booksDetected);
-    populateElement('device-count', data.prohibitedItems.devicesDetected);
-    populateElement('object-score', calculateObjectScore(data.prohibitedItems));
-    
-    // Populate events
-    const eventsContainer = container.querySelector('#events-container');
-    if (eventsContainer) {
-        eventsContainer.innerHTML = '';
-        
-        data.events.forEach(event => {
-            const eventItem = document.createElement('div');
-            eventItem.className = `event-item ${event.type || 'info'}`;
-            eventItem.innerHTML = `
-                <div class="event-time">${event.timestamp}</div>
-                <div>${event.message}</div>
-            `;
-            eventsContainer.appendChild(eventItem);
-        });
-    }
-    
-    // Set recommendation
-    const recommendation = container.querySelector('#recommendation');
-    if (recommendation) {
-        recommendation.textContent = getRecommendation(data.integrityScore);
-    }
-}
-
-// Fetch PDF template HTML
-async function fetchPDFTemplate() {
-    try {
-        // Try to load from external file
-        const response = await fetch('pdf-template.html');
-        if (response.ok) {
-            return await response.text();
-        }
-        throw new Error('Template file not found');
-    } catch (error) {
-        console.log('Using embedded template');
-        // Return embedded template as fallback
-        return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { text-align: center; color: #4361ee; }
-                .section { margin: 20px 0; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-                th { background-color: #f8f9fa; }
-                .score { font-size: 24px; font-weight: bold; color: #4361ee; text-align: center; margin: 20px 0; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>InterviewGuard Pro Report</h1>
-                <p>AI-Powered Proctoring Analysis</p>
-            </div>
-            
-            <div class="section">
-                <h2>Candidate Information</h2>
-                <table>
-                    <tr><th>Name:</th><td id="candidate-name">Test Candidate</td></tr>
-                    <tr><th>Date:</th><td id="interview-date">${new Date().toLocaleDateString()}</td></tr>
-                    <tr><th>Duration:</th><td id="duration">${document.getElementById('duration').textContent}</td></tr>
-                </table>
-            </div>
-            
-            <div class="score">
-                Integrity Score: <span id="integrity-score">100</span>/100
-            </div>
-            
-            <div class="section">
-                <h2>Focus Analysis</h2>
-                <table>
-                    <tr><th>Times Looked Away:</th><td id="look-away-count">0</td></tr>
-                    <tr><th>No Face Detected:</th><td id="no-face-count">0</td></tr>
-                    <tr><th>Multiple Faces:</th><td id="multiple-faces-count">0</td></tr>
-                </table>
-            </div>
-            
-            <div class="section">
-                <h2>Object Detection</h2>
-                <table>
-                    <tr><th>Mobile Phones:</th><td id="phone-count">0</td></tr>
-                    <tr><th>Books/Notes:</th><td id="book-count">0</td></tr>
-                    <tr><th>Other Devices:</th><td id="device-count">0</td></tr>
-                </table>
-            </div>
-        </body>
-        </html>
-        `;
     }
 }
 
