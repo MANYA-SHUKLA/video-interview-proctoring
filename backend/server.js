@@ -317,15 +317,10 @@ app.use((error, req, res, next) => {
     });
 });
 
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-    res.status(404).json({ 
-        success: false,
-        error: 'API endpoint not found' 
-    });
-});
+// Serve frontend files from the Frontend directory
+app.use(express.static(path.join(__dirname, '../Frontend')));
 
-// Serve frontend for all other routes
+// Handle all other routes by serving index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../Frontend/index.html'));
 });
@@ -334,4 +329,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`API health check: http://localhost:${PORT}/api/health`);
+    console.log(`Frontend available at: http://localhost:${3000}`);
 });
