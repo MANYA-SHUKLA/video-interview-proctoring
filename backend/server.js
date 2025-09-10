@@ -308,8 +308,26 @@ app.delete('/api/reports/:id', (req, res) => {
     }
 });
 
-// Serve frontend files from the Frontend directory
+// Serve static files from Frontend directory
 app.use(express.static(path.join(__dirname, '../Frontend')));
+
+// Explicit routes for HTML files to ensure they're served correctly
+app.get(['/', '/index.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, '../Frontend/index.html'));
+});
+
+app.get('/reports.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../Frontend/reports.html'));
+});
+
+app.get('/report-details.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../Frontend/report-details.html'));
+});
+
+// Handle client-side routing - return index.html for any other GET requests
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../Frontend/index.html'));
+});
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -325,4 +343,6 @@ app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`API health check: http://localhost:${PORT}/api/health`);
     console.log(`Frontend available at: http://localhost:${PORT}`);
+    console.log(`Reports page: http://localhost:${PORT}/reports.html`);
+    console.log(`Report details: http://localhost:${PORT}/report-details.html`);
 });

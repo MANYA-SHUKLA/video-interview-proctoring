@@ -153,10 +153,13 @@
                 </div>
             `).join('');
         }
-
-        // Replace the existing viewReport function in reports.html
+        // In reports.html, update the viewReport function
         function viewReport(reportId) {
+            // Use this for development (direct file access)
             window.location.href = `report-details.html?id=${reportId}`;
+
+            // Or use this for production (through server)
+            // window.location.href = `http://localhost:3000/report-details.html?id=${reportId}`;
         }
         // Download report
         async function downloadReport(reportId) {

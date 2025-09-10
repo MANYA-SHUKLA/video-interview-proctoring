@@ -119,39 +119,30 @@
         const toast = document.getElementById('notification-toast');
         const toastMessage = document.getElementById('toast-message');
 
-        // Load report on page load
-        document.addEventListener('DOMContentLoaded', () => {
+        // Load report based on ID
+        async function loadReport() {
             if (!reportId) {
-                showError('No report ID specified');
+                showError('No report ID specified in URL');
                 return;
             }
-            loadReport();
-        });
-
-        // Download button event
-        downloadBtn.addEventListener('click', downloadReport);
-
-        // Load report from API
-        async function loadReport() {
+            
             try {
                 showLoading();
-                
                 const response = await fetch(`${API_BASE_URL}/reports/${reportId}`);
-                const report = await response.json();
                 
                 if (response.ok) {
-                    displayReport(report);
+                    const report = await response.json();
+                    displayReportDetails(report);
                 } else {
-                    throw new Error(report.error || 'Failed to load report');
+                    throw new Error('Report not found');
                 }
             } catch (error) {
-                console.error('Error loading report:', error);
                 showError('Error loading report: ' + error.message);
             }
         }
 
         // Display report details
-        function displayReport(report) {
+        function displayReportDetails(report) {
             // Update header
             document.getElementById('candidate-name').textContent = report.candidateName;
             document.getElementById('interview-duration').textContent = report.interviewDuration;
@@ -274,6 +265,12 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+
+        // Call this when the page loads
+        document.addEventListener('DOMContentLoaded', loadReport);
+
+        // Add event listener to download button
+        downloadBtn.addEventListener('click', downloadReport);
     </script>
 </body>
 </html>
