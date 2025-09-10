@@ -40,7 +40,7 @@ let eventLog = [];
 // Object detection classes we care about
 const PROHIBITED_ITEMS = ['cell phone', 'book', 'laptop', 'keyboard', 'mouse', 'remote'];
 
-// API Base URL
+// API Base URL - Point to your backend
 const API_BASE_URL = 'http://localhost:3000/api';
 
 // Initialize the application when the page loads
@@ -264,12 +264,53 @@ function stopVideoRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         
-        // Download the recording after a short delay
+        // Save the recording to backend after a short delay
         setTimeout(() => {
             if (videoBlob) {
-                downloadRecordedVideo();
+                saveVideoRecording();
             }
         }, 500);
+    }
+}
+
+// Save video recording to backend
+async function saveVideoRecording() {
+    if (!videoBlob) return;
+    
+    try {
+        // Convert blob to base64 for sending to server
+        const reader = new FileReader();
+        reader.readAsDataURL(videoBlob);
+        reader.onloadend = async function() {
+            const base64data = reader.result.split(',')[1]; // Remove data URL prefix
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/videos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        videoData: base64data,
+                        reportId: generateId() // Generate a temporary ID for association
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    logEvent('Video recording saved to server.', 'success');
+                } else {
+                    logEvent('Failed to save video to server: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving video:', error);
+                logEvent('Error saving video to server.', 'error');
+            }
+        };
+    } catch (error) {
+        console.error('Error processing video:', error);
+        logEvent('Error processing video recording.', 'error');
     }
 }
 
@@ -792,23 +833,26 @@ async function downloadReport() {
             body: JSON.stringify(reportData)
         });
         
+        const result = await response.json();
+        
         if (response.ok) {
-            const result = await response.json();
             logEvent('Report saved successfully. Generating PDF...', 'success');
-            
             // Generate and download PDF
             await generatePDFReport(reportData);
-            
         } else {
-            throw new Error('Failed to save report');
+            throw new Error(result.error || 'Failed to save report');
         }
     } catch (error) {
         console.error('Error saving report:', error);
         logEvent('Error saving report to server. Generating local PDF...', 'error');
-        
         // Fallback to local PDF generation
         generatePDFReport(reportData);
     }
+}
+
+// Generate a unique ID
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 // Generate PDF report - UPDATED VERSION
