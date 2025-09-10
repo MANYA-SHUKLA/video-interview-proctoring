@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewGuard Pro - Report Details</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-file-alt"></i> Report Details</h1>
+            <nav>
+                <a href="index.html" class="btn"><i class="fas fa-video"></i> New Interview</a>
+                <a href="reports.html" class="btn"><i class="fas fa-list"></i> All Reports</a>
+                <button id="download-btn" class="btn primary"><i class="fas fa-download"></i> Download</button>
+            </nav>
+        </header>
+
+        <div class="report-details-container">
+            <div id="loading" class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading report details...
+            </div>
+
+            <div id="report-content" style="display: none;">
+                <div class="report-header">
+                    <div class="candidate-info">
+                        <h2 id="candidate-name"></h2>
+                        <div class="score-badge" id="score-badge"></div>
+                    </div>
+                    <div class="report-meta">
+                        <div class="meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span id="interview-duration"></span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span id="interview-date"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Focus Analysis</h3>
+                        <div class="stat-item">
+                            <span class="stat-label">Times Looked Away:</span>
+                            <span class="stat-value" id="look-away-count"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">No Face Detected:</span>
+                            <span class="stat-value" id="no-face-count"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Multiple Faces:</span>
+                            <span class="stat-value" id="multiple-faces-count"></span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Prohibited Items</h3>
+                        <div class="stat-item">
+                            <span class="stat-label">Mobile Phones:</span>
+                            <span class="stat-value" id="phone-count"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Books/Notes:</span>
+                            <span class="stat-value" id="book-count"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Other Devices:</span>
+                            <span class="stat-value" id="device-count"></span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card score-card">
+                        <h3>Final Assessment</h3>
+                        <div class="score-circle">
+                            <span id="final-score"></span>
+                            <small>/100</small>
+                        </div>
+                        <p id="score-description" class="score-description"></p>
+                        <p id="recommendation" class="recommendation"></p>
+                    </div>
+                </div>
+
+                <div class="events-section">
+                    <h3>Event Log</h3>
+                    <div id="events-list" class="events-list"></div>
+                </div>
+            </div>
+
+            <div id="error-message" class="error" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error loading report details</p>
+                <button onclick="loadReport()" class="btn">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-toast" class="toast">
+        <div class="toast-content">
+            <i class="fas fa-info-circle"></i>
+            <span id="toast-message"></span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const urlParams = new URLSearchParams(window.location.search);
+        const reportId = urlParams.get('id');
+
+        // DOM elements
+        const loadingElement = document.getElementById('loading');
+        const contentElement = document.getElementById('report-content');
+        const errorElement = document.getElementById('error-message');
+        const downloadBtn = document.getElementById('download-btn');
+        const toast = document.getElementById('notification-toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // Load report on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!reportId) {
+                showError('No report ID specified');
+                return;
+            }
+            loadReport();
+        });
+
+        // Download button event
+        downloadBtn.addEventListener('click', downloadReport);
+
+        // Load report from API
+        async function loadReport() {
+            try {
+                showLoading();
+                
+                const response = await fetch(`${API_BASE_URL}/reports/${reportId}`);
+                const report = await response.json();
+                
+                if (response.ok) {
+                    displayReport(report);
+                } else {
+                    throw new Error(report.error || 'Failed to load report');
+                }
+            } catch (error) {
+                console.error('Error loading report:', error);
+                showError('Error loading report: ' + error.message);
+            }
+        }
+
+        // Display report details
+        function displayReport(report) {
+            // Update header
+            document.getElementById('candidate-name').textContent = report.candidateName;
+            document.getElementById('interview-duration').textContent = report.interviewDuration;
+            document.getElementById('interview-date').textContent = new Date(report.timestamp).toLocaleDateString();
+            
+            // Update score badge
+            const scoreBadge = document.getElementById('score-badge');
+            scoreBadge.textContent = `${report.integrityScore}/100`;
+            scoreBadge.className = `score-badge score-${getScoreLevel(report.integrityScore)}`;
+            
+            // Update focus stats
+            document.getElementById('look-away-count').textContent = report.focusIssues.lookAwayCount;
+            document.getElementById('no-face-count').textContent = report.focusIssues.noFaceCount;
+            document.getElementById('multiple-faces-count').textContent = report.focusIssues.multipleFacesCount;
+            
+            // Update prohibited items
+            document.getElementById('phone-count').textContent = report.prohibitedItems.phonesDetected;
+            document.getElementById('book-count').textContent = report.prohibitedItems.booksDetected;
+            document.getElementById('device-count').textContent = report.prohibitedItems.devicesDetected;
+            
+            // Update final assessment
+            document.getElementById('final-score').textContent = report.integrityScore;
+            document.getElementById('score-description').textContent = getScoreDescription(report.integrityScore);
+            document.getElementById('recommendation').textContent = getRecommendation(report.integrityScore);
+            
+            // Update events log
+            const eventsList = document.getElementById('events-list');
+            if (report.events && report.events.length > 0) {
+                eventsList.innerHTML = report.events.map(event => `
+                    <div class="event-item ${event.type || 'info'}">
+                        <span class="event-time">${event.timestamp}</span>
+                        <span class="event-message">${event.message}</span>
+                    </div>
+                `).join('');
+            } else {
+                eventsList.innerHTML = '<div class="no-events">No events recorded during this interview</div>';
+            }
+            
+            showContent();
+        }
+
+        // Download report
+        async function downloadReport() {
+            try {
+                showNotification('Downloading report...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/reports/${reportId}/download`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `proctoring-report-${reportId}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showNotification('Report downloaded successfully', 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to download report');
+                }
+            } catch (error) {
+                console.error('Error downloading report:', error);
+                showNotification('Error downloading report: ' + error.message, 'error');
+            }
+        }
+
+        // Helper functions
+        function getScoreLevel(score) {
+            if (score >= 80) return 'high';
+            if (score >= 60) return 'medium';
+            return 'low';
+        }
+
+        function getScoreDescription(score) {
+            if (score >= 90) return "EXCELLENT - No significant issues detected";
+            if (score >= 70) return "GOOD - Minor focus issues observed";
+            if (score >= 50) return "FAIR - Several focus and integrity concerns";
+            return "POOR - Significant integrity issues detected";
+        }
+
+        function getRecommendation(score) {
+            if (score >= 80) return "RECOMMENDED - Candidate maintained good focus and integrity throughout the interview.";
+            if (score >= 60) return "CONDITIONALLY RECOMMENDED - Some focus issues were observed but may not disqualify the candidate.";
+            return "NOT RECOMMENDED - Significant integrity issues suggest the interview may not reflect the candidate's authentic abilities.";
+        }
+
+        function showLoading() {
+            loadingElement.style.display = 'block';
+            contentElement.style.display = 'none';
+            errorElement.style.display = 'none';
+        }
+
+        function showContent() {
+            loadingElement.style.display = 'none';
+            contentElement.style.display = 'block';
+            errorElement.style.display = 'none';
+        }
+
+        function showError(message) {
+            loadingElement.style.display = 'none';
+            contentElement.style.display = 'none';
+            errorElement.style.display = 'block';
+            errorElement.querySelector('p').textContent = message;
+        }
+
+        function showNotification(message, type = 'info') {
+            let icon = 'fas fa-info-circle';
+            if (type === 'error') icon = 'fas fa-exclamation-circle';
+            if (type === 'success') icon = 'fas fa-check-circle';
+            if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+            
+            toastMessage.innerHTML = `<i class="${icon}"></i> ${message}`;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -258,18 +258,18 @@ function startVideoRecording(stream) {
         document.getElementById('recording-state').textContent = 'Not Supported';
     }
 }
-
-// Stop video recording
+// Stop video recording and save it
 function stopVideoRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         
-        // Save the recording to backend after a short delay
+        // Save the recording after a short delay
         setTimeout(() => {
             if (videoBlob) {
                 saveVideoRecording();
+                downloadRecordedVideo(); // Also download locally for backup
             }
-        }, 500);
+        }, 1000);
     }
 }
 
@@ -278,13 +278,15 @@ async function saveVideoRecording() {
     if (!videoBlob) return;
     
     try {
+        showNotification('Saving video recording...', 'info');
+        
         // Convert blob to base64 for sending to server
         const reader = new FileReader();
-        reader.readAsDataURL(videoBlob);
+        
         reader.onloadend = async function() {
-            const base64data = reader.result.split(',')[1]; // Remove data URL prefix
-            
             try {
+                const base64data = reader.result.split(',')[1]; // Remove data URL prefix
+                
                 const response = await fetch(`${API_BASE_URL}/videos`, {
                     method: 'POST',
                     headers: {
@@ -292,7 +294,7 @@ async function saveVideoRecording() {
                     },
                     body: JSON.stringify({
                         videoData: base64data,
-                        reportId: generateId() // Generate a temporary ID for association
+                        reportId: generateId()
                     })
                 });
                 
@@ -300,20 +302,31 @@ async function saveVideoRecording() {
                 
                 if (response.ok) {
                     logEvent('Video recording saved to server.', 'success');
+                    showNotification('Video saved successfully!', 'success');
                 } else {
                     logEvent('Failed to save video to server: ' + result.error, 'error');
+                    showNotification('Video save failed, but downloaded locally', 'warning');
                 }
             } catch (error) {
                 console.error('Error saving video:', error);
                 logEvent('Error saving video to server.', 'error');
+                showNotification('Video save failed, but downloaded locally', 'warning');
             }
         };
+        
+        reader.onerror = function() {
+            logEvent('Error reading video file.', 'error');
+            showNotification('Video processing error', 'error');
+        };
+        
+        reader.readAsDataURL(videoBlob);
+        
     } catch (error) {
         console.error('Error processing video:', error);
         logEvent('Error processing video recording.', 'error');
+        showNotification('Video processing error', 'error');
     }
 }
-
 // Download recorded video
 function downloadRecordedVideo() {
     if (!videoBlob) return;
@@ -856,6 +869,7 @@ function generateId() {
 }
 
 // Generate PDF report - UPDATED VERSION
+// Generate PDF report - SIMPLIFIED RELIABLE VERSION
 async function generatePDFReport(reportData) {
     try {
         showNotification('Creating PDF report...', 'info');
@@ -867,131 +881,90 @@ async function generatePDFReport(reportData) {
             format: 'a4'
         });
         
-        // Set initial y position
-        let y = 20;
+        // Set margins and initial position
+        const margin = 20;
+        let y = margin;
         
         // Add header
         pdf.setFontSize(22);
-        pdf.setTextColor(67, 97, 238); // Blue color
+        pdf.setTextColor(67, 97, 238);
         pdf.text('InterviewGuard Pro Report', 105, y, { align: 'center' });
+        y += 10;
         
         pdf.setFontSize(14);
         pdf.setTextColor(100, 100, 100);
-        pdf.text('AI-Powered Proctoring Analysis', 105, y + 8, { align: 'center' });
+        pdf.text('AI-Powered Proctoring Analysis', 105, y, { align: 'center' });
+        y += 20;
         
-        y += 25;
-        
-        // Add candidate information section
+        // Candidate Information
         pdf.setFontSize(16);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('Candidate Information', 20, y);
-        
+        pdf.text('Candidate Information', margin, y);
         y += 10;
         
         pdf.setFontSize(12);
-        pdf.text(`Name: ${reportData.candidateName}`, 20, y);
-        pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, y + 7);
-        pdf.text(`Start Time: ${new Date(reportData.startTime).toLocaleTimeString()}`, 20, y + 14);
-        pdf.text(`End Time: ${new Date(reportData.endTime).toLocaleTimeString()}`, 20, y + 21);
-        pdf.text(`Duration: ${reportData.interviewDuration}`, 20, y + 28);
+        pdf.text(`Name: ${reportData.candidateName}`, margin, y);
+        y += 7;
+        pdf.text(`Duration: ${reportData.interviewDuration}`, margin, y);
+        y += 7;
+        pdf.text(`Start: ${new Date(reportData.startTime).toLocaleString()}`, margin, y);
+        y += 7;
+        pdf.text(`End: ${new Date(reportData.endTime).toLocaleString()}`, margin, y);
+        y += 15;
         
-        y += 40;
-        
-        // Add integrity score
+        // Integrity Score
         pdf.setFontSize(16);
-        pdf.text('Integrity Score', 20, y);
+        pdf.text('Integrity Score', margin, y);
+        y += 10;
         
         pdf.setFontSize(36);
         pdf.setTextColor(67, 97, 238);
-        pdf.text(`${reportData.integrityScore}/100`, 105, y + 10, { align: 'center' });
-        
-        pdf.setFontSize(12);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(getScoreDescription(reportData.integrityScore), 105, y + 18, { align: 'center' });
-        
-        y += 30;
-        
-        // Add focus analysis section
-        pdf.setFontSize(16);
-        pdf.text('Focus Analysis', 20, y);
-        
-        y += 10;
-        
-        pdf.setFontSize(12);
-        pdf.text(`Times Looked Away: ${reportData.focusIssues.lookAwayCount}`, 20, y);
-        pdf.text(`No Face Detected: ${reportData.focusIssues.noFaceCount}`, 20, y + 7);
-        pdf.text(`Multiple Faces: ${reportData.focusIssues.multipleFacesCount}`, 20, y + 14);
-        
-        y += 25;
-        
-        // Add object detection section
-        pdf.setFontSize(16);
-        pdf.text('Object Detection', 20, y);
-        
-        y += 10;
-        
-        pdf.setFontSize(12);
-        pdf.text(`Mobile Phones: ${reportData.prohibitedItems.phonesDetected}`, 20, y);
-        pdf.text(`Books/Notes: ${reportData.prohibitedItems.booksDetected}`, 20, y + 7);
-        pdf.text(`Other Devices: ${reportData.prohibitedItems.devicesDetected}`, 20, y + 14);
-        
-        y += 25;
-        
-        // Add event log section if there are events
-        if (reportData.events.length > 0) {
-            pdf.setFontSize(16);
-            pdf.text('Event Log', 20, y);
-            
-            y += 10;
-            
-            pdf.setFontSize(10);
-            
-            // Add events (with pagination if needed)
-            let eventsAdded = 0;
-            for (const event of reportData.events) {
-                if (y > 250) { // Check if we need a new page
-                    pdf.addPage();
-                    y = 20;
-                }
-                
-                pdf.setTextColor(0, 0, 0);
-                pdf.text(`[${event.timestamp}]`, 20, y);
-                
-                // Set color based on event type
-                if (event.type === 'error') pdf.setTextColor(231, 76, 60);
-                else if (event.type === 'warning') pdf.setTextColor(243, 156, 18);
-                else if (event.type === 'success') pdf.setTextColor(46, 204, 113);
-                else pdf.setTextColor(52, 152, 219);
-                
-                pdf.text(event.message, 40, y);
-                
-                y += 6;
-                eventsAdded++;
-                
-                // Limit to 50 events to prevent PDF from getting too large
-                if (eventsAdded >= 50) break;
-            }
-            
-            if (reportData.events.length > 50) {
-                y += 5;
-                pdf.setTextColor(100, 100, 100);
-                pdf.text(`... and ${reportData.events.length - 50} more events`, 20, y);
-            }
-        }
-        
+        pdf.text(`${reportData.integrityScore}/100`, 105, y, { align: 'center' });
         y += 15;
         
-        // Add final recommendation
-        pdf.setFontSize(14);
+        pdf.setFontSize(12);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('Recommendation:', 20, y);
+        pdf.text(getScoreDescription(reportData.integrityScore), 105, y, { align: 'center' });
+        y += 20;
         
+        // Focus Analysis
+        pdf.setFontSize(16);
+        pdf.text('Focus Analysis', margin, y);
+        y += 10;
+        
+        pdf.setFontSize(12);
+        pdf.text(`Times Looked Away: ${reportData.focusIssues.lookAwayCount}`, margin, y);
+        y += 7;
+        pdf.text(`No Face Detected: ${reportData.focusIssues.noFaceCount}`, margin, y);
+        y += 7;
+        pdf.text(`Multiple Faces: ${reportData.focusIssues.multipleFacesCount}`, margin, y);
+        y += 15;
+        
+        // Object Detection
+        pdf.setFontSize(16);
+        pdf.text('Prohibited Items Detected', margin, y);
+        y += 10;
+        
+        pdf.setFontSize(12);
+        pdf.text(`Mobile Phones: ${reportData.prohibitedItems.phonesDetected}`, margin, y);
+        y += 7;
+        pdf.text(`Books/Notes: ${reportData.prohibitedItems.booksDetected}`, margin, y);
+        y += 7;
+        pdf.text(`Other Devices: ${reportData.prohibitedItems.devicesDetected}`, margin, y);
+        y += 15;
+        
+        // Recommendation
+        pdf.setFontSize(14);
+        pdf.text('Recommendation:', margin, y);
         y += 8;
         
         pdf.setFontSize(12);
-        pdf.text(getRecommendation(reportData.integrityScore), 20, y);
+        const recommendation = getRecommendation(reportData.integrityScore);
+        // Split long text into multiple lines
+        const splitText = pdf.splitTextToSize(recommendation, 170);
+        pdf.text(splitText, margin, y);
         
-        // Add footer with generation time
+        // Add footer
         const pageCount = pdf.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);

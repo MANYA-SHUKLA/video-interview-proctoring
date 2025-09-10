@@ -9,9 +9,9 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+// Increase payload limit for video data
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Ensure directories exist
 const reportsDir = path.join(__dirname, 'reports');
@@ -40,6 +40,76 @@ try {
     console.log(`Loaded ${reports.length} existing reports`);
 } catch (error) {
     console.log('No existing reports found or error loading them');
+}
+
+// Helper functions
+
+// Generate a unique ID
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Save report to file
+function saveReportToFile(report) {
+    try {
+        const filename = `report-${report.id}.json`;
+        const filepath = path.join(reportsDir, filename);
+        fs.writeFileSync(filepath, JSON.stringify(report, null, 2));
+    } catch (error) {
+        console.error('Error saving report to file:', error);
+    }
+}
+
+// Generate report content for download
+function generateReportContent(report) {
+    return `
+=== INTERVIEWGUARD PRO - PROCTORING REPORT ===
+Report ID: ${report.id}
+Generated: ${new Date(report.timestamp).toLocaleString()}
+
+--- CANDIDATE INFORMATION ---
+Name: ${report.candidateName}
+Interview Duration: ${report.interviewDuration}
+Start Time: ${new Date(report.startTime).toLocaleString()}
+End Time: ${new Date(report.endTime).toLocaleString()}
+
+--- FOCUS ANALYSIS ---
+Times looked away: ${report.focusIssues.lookAwayCount}
+Times no face detected: ${report.focusIssues.noFaceCount}
+Multiple faces detected: ${report.focusIssues.multipleFacesCount}
+
+--- PROHIBITED ITEMS DETECTED ---
+Mobile phones: ${report.prohibitedItems.phonesDetected}
+Books/notes: ${report.prohibitedItems.booksDetected}
+Other devices: ${report.prohibitedItems.devicesDetected}
+
+--- FINAL ASSESSMENT ---
+Integrity Score: ${report.integrityScore}/100
+${getScoreDescription(report.integrityScore)}
+
+Recommendation: ${getRecommendation(report.integrityScore)}
+
+=== DETAILED EVENT LOG ===
+${(report.events || []).map(event => `[${event.timestamp}] ${event.message}`).join('\n')}
+
+=============================================
+InterviewGuard Pro - AI-Powered Proctoring System
+    `;
+}
+
+// Helper function to get score description
+function getScoreDescription(score) {
+    if (score >= 90) return "EXCELLENT - No significant issues detected";
+    if (score >= 70) return "GOOD - Minor focus issues observed";
+    if (score >= 50) return "FAIR - Several focus and integrity concerns";
+    return "POOR - Significant integrity issues detected";
+}
+
+// Helper function to get recommendation
+function getRecommendation(score) {
+    if (score >= 80) return "RECOMMENDED - Candidate maintained good focus and integrity throughout the interview.";
+    if (score >= 60) return "CONDITIONALLY RECOMMENDED - Some focus issues were observed but may not disqualify the candidate.";
+    return "NOT RECOMMENDED - Significant integrity issues suggest the interview may not reflect the candidate's authentic abilities.";
 }
 
 // API Routes
@@ -238,75 +308,8 @@ app.delete('/api/reports/:id', (req, res) => {
     }
 });
 
-// Helper functions
-
-// Generate a unique ID
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-// Save report to file
-function saveReportToFile(report) {
-    try {
-        const filename = `report-${report.id}.json`;
-        const filepath = path.join(reportsDir, filename);
-        fs.writeFileSync(filepath, JSON.stringify(report, null, 2));
-    } catch (error) {
-        console.error('Error saving report to file:', error);
-    }
-}
-
-// Generate report content for download
-function generateReportContent(report) {
-    return `
-=== INTERVIEWGUARD PRO - PROCTORING REPORT ===
-Report ID: ${report.id}
-Generated: ${new Date(report.timestamp).toLocaleString()}
-
---- CANDIDATE INFORMATION ---
-Name: ${report.candidateName}
-Interview Duration: ${report.interviewDuration}
-Start Time: ${new Date(report.startTime).toLocaleString()}
-End Time: ${new Date(report.endTime).toLocaleString()}
-
---- FOCUS ANALYSIS ---
-Times looked away: ${report.focusIssues.lookAwayCount}
-Times no face detected: ${report.focusIssues.noFaceCount}
-Multiple faces detected: ${report.focusIssues.multipleFacesCount}
-
---- PROHIBITED ITEMS DETECTED ---
-Mobile phones: ${report.prohibitedItems.phonesDetected}
-Books/notes: ${report.prohibitedItems.booksDetected}
-Other devices: ${report.prohibitedItems.devicesDetected}
-
---- FINAL ASSESSMENT ---
-Integrity Score: ${report.integrityScore}/100
-${getScoreDescription(report.integrityScore)}
-
-Recommendation: ${getRecommendation(report.integrityScore)}
-
-=== DETAILED EVENT LOG ===
-${(report.events || []).map(event => `[${event.timestamp}] ${event.message}`).join('\n')}
-
-=============================================
-InterviewGuard Pro - AI-Powered Proctoring System
-    `;
-}
-
-// Helper function to get score description
-function getScoreDescription(score) {
-    if (score >= 90) return "EXCELLENT - No significant issues detected";
-    if (score >= 70) return "GOOD - Minor focus issues observed";
-    if (score >= 50) return "FAIR - Several focus and integrity concerns";
-    return "POOR - Significant integrity issues detected";
-}
-
-// Helper function to get recommendation
-function getRecommendation(score) {
-    if (score >= 80) return "RECOMMENDED - Candidate maintained good focus and integrity throughout the interview.";
-    if (score >= 60) return "CONDITIONALLY RECOMMENDED - Some focus issues were observed but may not disqualify the candidate.";
-    return "NOT RECOMMENDED - Significant integrity issues suggest the interview may not reflect the candidate's authentic abilities.";
-}
+// Serve frontend files from the Frontend directory
+app.use(express.static(path.join(__dirname, '../Frontend')));
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -317,17 +320,9 @@ app.use((error, req, res, next) => {
     });
 });
 
-// Serve frontend files from the Frontend directory
-app.use(express.static(path.join(__dirname, '../Frontend')));
-
-// Handle all other routes by serving index.html
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../Frontend/index.html'));
-});
-
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`API health check: http://localhost:${PORT}/api/health`);
-    console.log(`Frontend available at: http://localhost:${3000}`);
+    console.log(`Frontend available at: http://localhost:${PORT}`);
 });
