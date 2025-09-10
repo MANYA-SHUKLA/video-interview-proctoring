@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewGuard Pro - Reports</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-file-alt"></i> InterviewGuard Pro - Reports</h1>
+            <nav>
+                <a href="index.html" class="btn"><i class="fas fa-video"></i> New Interview</a>
+                <button id="refresh-btn" class="btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </nav>
+        </header>
+
+        <div class="reports-container">
+            <div class="reports-header">
+                <h2>Saved Interview Reports</h2>
+                <div class="stats">
+                    <span id="total-reports">0 reports</span>
+                </div>
+            </div>
+
+            <div id="reports-list" class="reports-list">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading reports...
+                </div>
+            </div>
+
+            <div id="no-reports" class="no-reports" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h3>No reports yet</h3>
+                <p>Conduct an interview to see reports here</p>
+                <a href="index.html" class="btn primary">Start New Interview</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-toast" class="toast">
+        <div class="toast-content">
+            <i class="fas fa-info-circle"></i>
+            <span id="toast-message"></span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // DOM elements
+        const reportsList = document.getElementById('reports-list');
+        const noReports = document.getElementById('no-reports');
+        const totalReports = document.getElementById('total-reports');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const toast = document.getElementById('notification-toast');
+        const toastMessage = document.getElementById('toast-message');
+
+        // Load reports on page load
+        document.addEventListener('DOMContentLoaded', loadReports);
+
+        // Refresh button event
+        refreshBtn.addEventListener('click', loadReports);
+
+        // Load reports from API
+        async function loadReports() {
+            try {
+                reportsList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading reports...</div>';
+                
+                const response = await fetch(`${API_BASE_URL}/reports`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayReports(data);
+                } else {
+                    throw new Error(data.error || 'Failed to load reports');
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                reportsList.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error loading reports: ${error.message}</p>
+                        <button onclick="loadReports()" class="btn">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Display reports in the list
+        function displayReports(reports) {
+            totalReports.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
+            
+            if (reports.length === 0) {
+                reportsList.style.display = 'none';
+                noReports.style.display = 'block';
+                return;
+            }
+            
+            noReports.style.display = 'none';
+            reportsList.style.display = 'block';
+            
+            reportsList.innerHTML = reports.map(report => `
+                <div class="report-card">
+                    <div class="report-header">
+                        <h3>${report.candidateName}</h3>
+                        <span class="score-badge score-${getScoreLevel(report.integrityScore)}">
+                            ${report.integrityScore}/100
+                        </span>
+                    </div>
+                    
+                    <div class="report-details">
+                        <div class="detail">
+                            <i class="fas fa-clock"></i>
+                            <span>Duration: ${report.interviewDuration}</span>
+                        </div>
+                        <div class="detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>Date: ${new Date(report.timestamp).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-stats">
+                        <div class="stat">
+                            <span class="stat-value">${report.focusIssues.lookAwayCount}</span>
+                            <span class="stat-label">Look Aways</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${report.focusIssues.noFaceCount}</span>
+                            <span class="stat-label">No Face</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${report.prohibitedItems.phonesDetected}</span>
+                            <span class="stat-label">Phones</span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-actions">
+                        <button onclick="viewReport('${report.id}')" class="btn">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button onclick="downloadReport('${report.id}')" class="btn primary">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button onclick="deleteReport('${report.id}')" class="btn danger">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // View report details
+        function viewReport(reportId) {
+            window.location.href = `report-details.html?id=${reportId}`;
+        }
+
+        // Download report
+        async function downloadReport(reportId) {
+            try {
+                showNotification('Downloading report...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/reports/${reportId}/download`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `proctoring-report-${reportId}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showNotification('Report downloaded successfully', 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to download report');
+                }
+            } catch (error) {
+                console.error('Error downloading report:', error);
+                showNotification('Error downloading report: ' + error.message, 'error');
+            }
+        }
+
+        // Delete report
+        async function deleteReport(reportId) {
+            if (!confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                showNotification('Deleting report...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('Report deleted successfully', 'success');
+                    loadReports(); // Reload the list
+                } else {
+                    throw new Error(data.error || 'Failed to delete report');
+                }
+            } catch (error) {
+                console.error('Error deleting report:', error);
+                showNotification('Error deleting report: ' + error.message, 'error');
+            }
+        }
+
+        // Helper function to get score level
+        function getScoreLevel(score) {
+            if (score >= 80) return 'high';
+            if (score >= 60) return 'medium';
+            return 'low';
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            let icon = 'fas fa-info-circle';
+            if (type === 'error') icon = 'fas fa-exclamation-circle';
+            if (type === 'success') icon = 'fas fa-check-circle';
+            if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+            
+            toastMessage.innerHTML = `<i class="${icon}"></i> ${message}`;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
