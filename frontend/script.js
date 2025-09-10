@@ -6,7 +6,7 @@ let isInterviewRunning = false;
 let startTime = null;
 let timerInterval = null;
 
-// Focus detection variables
+
 let lookAwayCount = 0;
 let noFaceCount = 0;
 let multipleFacesCount = 0;
